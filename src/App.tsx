@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -99,6 +99,16 @@ function App() {
   const [showMobileProjectsPage, setShowMobileProjectsPage] = useState(() => window.innerWidth <= 900);
   const [activeView, setActiveView] = useState<ProjectView>('board');
   const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
+  const [isBoardPanning, setIsBoardPanning] = useState(false);
+  const panSessionRef = useRef<{
+    active: boolean;
+    startX: number;
+    startScrollLeft: number;
+  }>({
+    active: false,
+    startX: 0,
+    startScrollLeft: 0
+  });
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -252,7 +262,7 @@ function App() {
   const updateCard = (
     listId: string,
     cardId: string,
-    nextValues: Pick<Card, 'title' | 'description' | 'startDate' | 'endDate' | 'assigneeId'>
+    nextValues: Pick<Card, 'title' | 'description' | 'startDate' | 'endDate' | 'assigneeId' | 'color'>
   ) => {
     updateActiveProject((project) => ({
       ...project,
@@ -368,6 +378,42 @@ function App() {
     }));
   };
 
+  const isPanIgnoredTarget = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false;
+
+    return Boolean(
+      target.closest('.task-card, .list-header, button, input, textarea, select, a, [role="button"]')
+    );
+  };
+
+  const onBoardPointerDown = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.button !== 0) return;
+    if (isPanIgnoredTarget(event.target)) return;
+
+    const container = event.currentTarget;
+    panSessionRef.current = {
+      active: true,
+      startX: event.clientX,
+      startScrollLeft: container.scrollLeft
+    };
+    setIsBoardPanning(true);
+    container.setPointerCapture(event.pointerId);
+  };
+
+  const onBoardPointerMove = (event: React.PointerEvent<HTMLElement>) => {
+    if (!panSessionRef.current.active) return;
+    const container = event.currentTarget;
+    const delta = event.clientX - panSessionRef.current.startX;
+    container.scrollLeft = panSessionRef.current.startScrollLeft - delta;
+    event.preventDefault();
+  };
+
+  const finishBoardPan = () => {
+    if (!panSessionRef.current.active) return;
+    panSessionRef.current.active = false;
+    setIsBoardPanning(false);
+  };
+
   const selectProject = (projectId: string) => {
     setActiveProjectId(projectId);
     if (isMobile) {
@@ -436,21 +482,23 @@ function App() {
       ) : null}
 
       <section className="main-area">
-        {isMobile ? (
-          <button className="btn btn-subtle mobile-menu-close" onClick={() => setShowMobileProjectsPage(true)}>
-            X
-          </button>
-        ) : null}
+        <div className="page-head">
+          {isMobile ? (
+            <button className="btn btn-subtle mobile-menu-close" onClick={() => setShowMobileProjectsPage(true)}>
+              X
+            </button>
+          ) : null}
 
-        {!isMobile && isSidebarCollapsed ? (
-          <button className="btn btn-subtle sidebar-reopen" onClick={() => setIsSidebarCollapsed(false)}>
-            Mostrar proyectos
-          </button>
-        ) : null}
+          <div className="page-title">
+            <p className="eyebrow">Mono Planner</p>
+            <h1>{activeProject?.name ?? 'Sin proyecto'}</h1>
+          </div>
 
-        <div className="page-title">
-          <p className="eyebrow">Mono Planner</p>
-          <h1>{activeProject?.name ?? 'Sin proyecto'}</h1>
+          {!isMobile && isSidebarCollapsed ? (
+            <button className="btn btn-subtle sidebar-reopen" onClick={() => setIsSidebarCollapsed(false)}>
+              Mostrar proyectos
+            </button>
+          ) : null}
         </div>
 
         {activeProject ? (
@@ -470,47 +518,55 @@ function App() {
               </button>
             </nav>
 
-            {activeView === 'board' ? (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCorners}
-                onDragStart={onDragStart}
-                onDragEnd={onDragEnd}
-              >
-                <section className="board-lists">
-                  <SortableContext items={listIds} strategy={horizontalListSortingStrategy}>
-                    {activeProject.lists.map((list) => (
-                      <SortableList
-                        key={list.id}
-                        list={list}
-                        onAddCard={addCard}
-                        onOpenCard={(cardId) => setEditingCardRef({ listId: list.id, cardId })}
-                        usersById={usersById}
-                      />
-                    ))}
-                  </SortableContext>
+            <div className="project-content">
+              {activeView === 'board' ? (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCorners}
+                  onDragStart={onDragStart}
+                  onDragEnd={onDragEnd}
+                >
+                  <section
+                    className={`board-lists ${isBoardPanning ? 'is-panning' : ''}`}
+                    onPointerDown={onBoardPointerDown}
+                    onPointerMove={onBoardPointerMove}
+                    onPointerUp={finishBoardPan}
+                    onPointerCancel={finishBoardPan}
+                  >
+                    <SortableContext items={listIds} strategy={horizontalListSortingStrategy}>
+                      {activeProject.lists.map((list) => (
+                        <SortableList
+                          key={list.id}
+                          list={list}
+                          onAddCard={addCard}
+                          onOpenCard={(cardId) => setEditingCardRef({ listId: list.id, cardId })}
+                          usersById={usersById}
+                        />
+                      ))}
+                    </SortableContext>
 
-                  <article className="list-add-column">
-                    <button className="btn btn-primary add-list-button" onClick={addList}>
-                      + Nueva lista
-                    </button>
-                  </article>
-                </section>
+                    <article className="list-add-column">
+                      <button className="btn btn-primary add-list-button" onClick={addList}>
+                        + Nueva lista
+                      </button>
+                    </article>
+                  </section>
 
-                <DragOverlay>
-                  {activeDrag ? (
-                    <div className={`overlay-card ${activeDrag.type === 'list' ? 'overlay-list' : ''}`}>{activeDrag.title}</div>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-            ) : (
-              <ProjectCalendar
-                month={calendarMonth}
-                onMonthChange={setCalendarMonth}
-                events={calendarEvents}
-                onOpenCard={(listId, cardId) => setEditingCardRef({ listId, cardId })}
-              />
-            )}
+                  <DragOverlay>
+                    {activeDrag ? (
+                      <div className={`overlay-card ${activeDrag.type === 'list' ? 'overlay-list' : ''}`}>{activeDrag.title}</div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              ) : (
+                <ProjectCalendar
+                  month={calendarMonth}
+                  onMonthChange={setCalendarMonth}
+                  events={calendarEvents}
+                  onOpenCard={(listId, cardId) => setEditingCardRef({ listId, cardId })}
+                />
+              )}
+            </div>
           </>
         ) : (
           <section className="empty-state">
@@ -566,15 +622,21 @@ function SortableList({ list, onAddCard, onOpenCard, usersById }: SortableListPr
 
       <div className="cards-stack" id={list.id}>
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-          {list.cards.map((card) => (
+          {list.cards.map((card) => {
+            const assignee = card.assigneeId ? usersById[card.assigneeId] : undefined;
+            const assigneeLabel = assignee ? `${assignee.emoji} ${assignee.name}` : '';
+
+            return (
             <SortableCard
               key={card.id}
               card={card}
               listId={list.id}
               onOpen={() => onOpenCard(card.id)}
-              assigneeName={card.assigneeId ? usersById[card.assigneeId]?.name ?? '' : ''}
+              assigneeName={assigneeLabel}
+              color={card.color}
             />
-          ))}
+            );
+          })}
         </SortableContext>
       </div>
 
@@ -590,9 +652,10 @@ type SortableCardProps = {
   listId: string;
   onOpen: () => void;
   assigneeName: string;
+  color?: string;
 };
 
-function SortableCard({ card, listId, onOpen, assigneeName }: SortableCardProps) {
+function SortableCard({ card, listId, onOpen, assigneeName, color }: SortableCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: cardDragId(listId, card.id)
   });
@@ -600,7 +663,8 @@ function SortableCard({ card, listId, onOpen, assigneeName }: SortableCardProps)
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1
+    opacity: isDragging ? 0.5 : 1,
+    background: color ?? '#ffffff'
   };
 
   return (
@@ -718,7 +782,7 @@ function ProjectCalendar({ month, onMonthChange, events, onOpenCard }: ProjectCa
 type CardEditModalProps = {
   card: Card;
   users: User[];
-  onSave: (values: Pick<Card, 'title' | 'description' | 'startDate' | 'endDate' | 'assigneeId'>) => void;
+  onSave: (values: Pick<Card, 'title' | 'description' | 'startDate' | 'endDate' | 'assigneeId' | 'color'>) => void;
   onClose: () => void;
 };
 
@@ -728,6 +792,7 @@ function CardEditModal({ card, users, onSave, onClose }: CardEditModalProps) {
   const [startDate, setStartDate] = useState(card.startDate ?? '');
   const [endDate, setEndDate] = useState(card.endDate ?? card.dueDate ?? '');
   const [assigneeId, setAssigneeId] = useState(card.assigneeId ?? '');
+  const [color, setColor] = useState(card.color ?? '#ffffff');
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -747,7 +812,8 @@ function CardEditModal({ card, users, onSave, onClose }: CardEditModalProps) {
       description: description.trim(),
       startDate: startDate || undefined,
       endDate: endDate || undefined,
-      assigneeId: assigneeId || undefined
+      assigneeId: assigneeId || undefined,
+      color: color || '#ffffff'
     });
   };
 
@@ -790,10 +856,18 @@ function CardEditModal({ card, users, onSave, onClose }: CardEditModalProps) {
               <option value="">Sin asignar</option>
               {users.map((user) => (
                 <option key={user.id} value={user.id}>
-                  {user.name}
+                  {user.emoji} {user.name}
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="field">
+            <span>Color de tarjeta</span>
+            <div className="color-field">
+              <input type="color" value={color} onChange={(event) => setColor(event.target.value)} />
+              <span className="color-value">{color}</span>
+            </div>
           </label>
 
           <footer className="card-modal-actions">

@@ -1,7 +1,7 @@
 :root {
   font-family: 'Avenir Next', 'Segoe UI', sans-serif;
   color: #1f2430;
-  background: radial-gradient(circle at top right, #e8f4ff 0%, #f9fafc 40%, #eef2f8 100%);
+  background: linear-gradient(165deg, #fff5a8 0%, #ffe66d 55%, #ffd84d 100%);
   line-height: 1.35;
 }
 
@@ -19,7 +19,7 @@ body {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100dvh;
   display: grid;
   grid-template-columns: 250px 1fr;
   gap: 0.75rem;
@@ -79,10 +79,18 @@ body {
 }
 
 .main-area {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.65rem;
   min-height: 0;
-  align-content: start;
+  overflow: hidden;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.6rem;
 }
 
 .page-title {
@@ -134,12 +142,29 @@ body {
   border-color: #c8daef;
 }
 
+.project-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .board-lists {
   display: flex;
   gap: 0.8rem;
   overflow-x: auto;
+  overflow-y: hidden;
   align-items: flex-start;
-  padding-bottom: 0.5rem;
+  height: 100%;
+  min-height: 0;
+  padding-bottom: 0;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0;
+  cursor: grab;
+  user-select: none;
+}
+
+.board-lists.is-panning {
+  cursor: grabbing;
 }
 
 .list-column {
@@ -151,7 +176,10 @@ body {
   padding: 0.75rem;
   box-shadow: 0 10px 30px rgba(44, 64, 92, 0.12);
   display: grid;
+  grid-template-rows: auto auto auto;
   gap: 0.7rem;
+  height: auto;
+  scroll-snap-align: start;
 }
 
 .list-add-column {
@@ -161,6 +189,11 @@ body {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.7);
   padding: 0.6rem;
+  display: grid;
+  align-content: center;
+  height: 100%;
+  min-height: 0;
+  scroll-snap-align: start;
 }
 
 .add-list-button {
@@ -194,6 +227,7 @@ body {
   display: grid;
   gap: 0.65rem;
   min-height: 40px;
+  align-content: start;
 }
 
 .task-card {
@@ -203,6 +237,7 @@ body {
   padding: 0.72rem;
   box-shadow: 0 6px 18px rgba(59, 79, 111, 0.1);
   cursor: grab;
+  user-select: none;
 }
 
 .task-card h3 {
@@ -290,8 +325,11 @@ body {
 }
 
 .sidebar-reopen {
-  justify-self: start;
   width: fit-content;
+  border: 1px solid #c7d8ef;
+  background: #e8f1fd;
+  color: #1f436f;
+  white-space: nowrap;
 }
 
 .mobile-menu-close {
@@ -329,7 +367,7 @@ body {
   border: 1px solid #d7e2f0;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.9);
-  min-height: 620px;
+  height: 100%;
   display: grid;
   grid-template-rows: auto 1fr;
   overflow: hidden;
@@ -484,6 +522,29 @@ body {
   resize: vertical;
 }
 
+.color-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.color-field input[type='color'] {
+  width: 46px;
+  min-width: 46px;
+  height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid #cbd9eb;
+  background: transparent;
+  cursor: pointer;
+}
+
+.color-value {
+  font-size: 0.78rem;
+  color: #516682;
+  font-weight: 700;
+}
+
 .card-modal-actions {
   margin-top: 0.25rem;
   display: flex;
@@ -495,6 +556,27 @@ body {
   .app-shell {
     grid-template-columns: 1fr;
     padding: 0.65rem;
+    height: 100dvh;
+  }
+
+  .board-lists {
+    width: 100%;
+    overflow-x: auto;
+    gap: 0.65rem;
+    padding-bottom: 0;
+  }
+
+  .board-lists > .list-column,
+  .board-lists > .list-add-column {
+    width: calc(100dvw - 1.3rem);
+    min-width: calc(100dvw - 1.3rem);
+    max-width: calc(100dvw - 1.3rem);
+    flex: 0 0 calc(100dvw - 1.3rem);
+    scroll-snap-align: start;
+  }
+
+  .list-add-column {
+    min-height: 180px;
   }
 
   .mobile-menu-close {
@@ -505,6 +587,10 @@ body {
     align-items: center;
     font-size: 0.92rem;
     font-weight: 800;
+  }
+
+  .page-head {
+    justify-content: flex-start;
   }
 
   .card-modal-actions {

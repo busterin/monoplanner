@@ -6,6 +6,7 @@ export type Card = {
   endDate?: string;
   dueDate?: string;
   assigneeId?: string;
+  color?: string;
 };
 
 export type List = {
@@ -23,6 +24,8 @@ export type Project = {
 export type User = {
   id: string;
   name: string;
+  emoji: string;
+  avatarUrl?: string;
 };
 
 export type Workspace = {
