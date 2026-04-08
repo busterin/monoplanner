@@ -1,0 +1,60 @@
+{
+  "name": "mono-planner",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Mono Planner - Trello style board for web and desktop",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "npm run dev:web",
+    "dev:web": "vite --host 127.0.0.1 --port 5173",
+    "build:web": "vite build",
+    "preview:web": "vite preview",
+    "dev:desktop": "concurrently -k \"npm run dev:web\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "build:desktop": "npm run build:web && electron-builder",
+    "build:mac": "npm run build:web && electron-builder --mac",
+    "build:win": "npm run build:web && electron-builder --win"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "concurrently": "^9.0.1",
+    "cross-env": "^7.0.3",
+    "electron": "^37.0.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.monoplanner.app",
+    "productName": "Mono Planner",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
+  }
+}
