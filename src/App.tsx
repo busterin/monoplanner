@@ -95,6 +95,8 @@ function App() {
   const [activeDrag, setActiveDrag] = useState<{ type: 'list' | 'card'; title: string } | null>(null);
   const [editingCardRef, setEditingCardRef] = useState<{ listId: string; cardId: string } | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
+  const [showMobileProjectsPage, setShowMobileProjectsPage] = useState(() => window.innerWidth <= 900);
   const [activeView, setActiveView] = useState<ProjectView>('board');
   const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
 
@@ -157,6 +159,25 @@ function App() {
     setActiveView('board');
   }, [activeProjectId]);
 
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)');
+
+    const sync = () => {
+      const mobile = media.matches;
+      setIsMobile(mobile);
+
+      if (mobile) {
+        setShowMobileProjectsPage(true);
+      } else {
+        setShowMobileProjectsPage(false);
+      }
+    };
+
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
+
   const commitWorkspace = (nextWorkspace: Workspace) => {
     setWorkspace(nextWorkspace);
     saveWorkspace(nextWorkspace);
@@ -190,6 +211,9 @@ function App() {
 
     commitWorkspace(nextWorkspace);
     setActiveProjectId(nextProject.id);
+    if (isMobile) {
+      setShowMobileProjectsPage(false);
+    }
   };
 
   const addList = () => {
@@ -344,9 +368,45 @@ function App() {
     }));
   };
 
+  const selectProject = (projectId: string) => {
+    setActiveProjectId(projectId);
+    if (isMobile) {
+      setShowMobileProjectsPage(false);
+    }
+  };
+
+  if (isMobile && showMobileProjectsPage) {
+    return (
+      <main className="mobile-projects-page">
+        <header className="mobile-projects-header">
+          <p className="eyebrow">Mono Planner</p>
+          <h1>Proyectos</h1>
+        </header>
+
+        <div className="mobile-projects-list">
+          {workspace.projects.map((project) => (
+            <button
+              key={project.id}
+              className={`project-item ${project.id === activeProjectId ? 'active' : ''}`}
+              onClick={() => selectProject(project.id)}
+            >
+              {project.name}
+            </button>
+          ))}
+        </div>
+
+        <footer className="mobile-projects-actions">
+          <button className="btn btn-primary" onClick={addProject}>
+            + Nuevo proyecto
+          </button>
+        </footer>
+      </main>
+    );
+  }
+
   return (
     <main className={`app-shell ${isSidebarCollapsed ? 'sidebar-hidden' : ''}`}>
-      {!isSidebarCollapsed ? (
+      {!isMobile && !isSidebarCollapsed ? (
         <aside className="sidebar">
           <div className="sidebar-header">
             <h2>Proyectos</h2>
@@ -360,7 +420,7 @@ function App() {
               <button
                 key={project.id}
                 className={`project-item ${project.id === activeProjectId ? 'active' : ''}`}
-                onClick={() => setActiveProjectId(project.id)}
+                onClick={() => selectProject(project.id)}
               >
                 {project.name}
               </button>
@@ -376,7 +436,13 @@ function App() {
       ) : null}
 
       <section className="main-area">
-        {isSidebarCollapsed ? (
+        {isMobile ? (
+          <button className="btn btn-subtle mobile-menu-close" onClick={() => setShowMobileProjectsPage(true)}>
+            X
+          </button>
+        ) : null}
+
+        {!isMobile && isSidebarCollapsed ? (
           <button className="btn btn-subtle sidebar-reopen" onClick={() => setIsSidebarCollapsed(false)}>
             Mostrar proyectos
           </button>
